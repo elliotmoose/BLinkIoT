@@ -1,17 +1,1 @@
-{
-    "elliot" : {
-        "username" : "elliot",
-        "checked_in" : false
-    },
-
-    "sean" : {
-        "username" : "sean",
-        "checked_in" : false
-    },
-
-    "sidarth" : {
-        "username" : "sidarth",
-        "checked_in" : true
-    }
-
-}
+{"sean": {"username": "sean", "checked_in": false}, "elliot": {"username": "elliot", "checked_in": false}, "sidarth": {"username": "sidarth", "checked_in": true}}

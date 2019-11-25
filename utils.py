@@ -3,10 +3,18 @@ import face_recognition
 import numpy as np
 import math
 import time
+import requests
 
+with open("config.json") as config_file:
+    config = json.load(config_file)
+
+OFFLINE_MODE = config["OFFLINE_MODE"]
+DEBUG = config["DEBUG"]
 
 def load_face_encodings():
     # TODO: load face encoding information from server
+    if not OFFLINE_MODE:
+        pass
     with open('face_encodings.json', 'r') as f:
         face_encoding_dict = json.load(f)
 
@@ -15,6 +23,8 @@ def load_face_encodings():
 
 def load_attendance():
     # TODO: load attendance information from server
+    if not OFFLINE_MODE:
+        pass
     with open('event_attendance.json', 'r') as f:
         event_attendance_dict = json.load(f)
 
@@ -22,31 +32,7 @@ def load_attendance():
 
 
 def save_attendance(event_attendance_dict):
+    if DEBUG:
+        return
     with open('event_attendance.json', 'w') as f:
         json.dump(event_attendance_dict, f)
-
-
-def check_in(user):
-    # TODO: implement sending check-in to server
-    time.sleep(2)
-
-
-def match_encodings(encoding_dict, input_encoding, threshold_distance=0.5):
-    """
-    encoding dict: dictionary of face encodings
-    input_encoding : an np array
-    threshold_distance: float, default 0.5
-    """
-
-    min_distance = math.inf
-    matched_user = None
-
-    for _, user in encoding_dict.items():
-
-        face_distance = face_recognition.face_distance([user["face_encoding"]],input_encoding)[0]
-        
-        if face_distance < threshold_distance and face_distance < min_distance:
-            min_distance = face_distance
-            matched_user = user
-            
-    return matched_user
