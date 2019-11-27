@@ -37,9 +37,14 @@ def mark_attendance_users():
     while True:
         if not found_users_queue.empty():
             user = found_users_queue.get()
-            print("found user:", user)
-            res = requests.post(ENDPOINT_URL, data=json.dumps({"username": user, "event_id": EVENT_ID}))
-            event_attendance_dict[user]["checked_in"] = True
+            if event_attendance_dict[user]["attended"] == False:
+                print("found user:", user)
+                res = requests.post(ENDPOINT_URL+"/markAttendanceForEvent", data={"username": user, "event_id": EVENT_ID})
+                if res.status_code == 200 and res.json()["status"] == "SUCCESS":
+                    print("Marked attendance for", user)
+                    event_attendance_dict[user]["attended"] = True
+                else:
+                    print("ERROR while marking attendance: ", res.json())
         if not is_running:
             break
 
@@ -71,14 +76,14 @@ while True:
     process_this_frame = not process_this_frame
 
     for name in face_names:
-        if name in event_attendance_dict and event_attendance_dict[name]["checked_in"] == False:
+        if name in event_attendance_dict and event_attendance_dict[name]["attended"] == False:
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (209, 136,2), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
             cv2.putText(frame, "Hello " + name + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
             cv2.putText(frame, "We're checking you in...", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             found_users_queue.put(name)
             break
-        elif name in event_attendance_dict and event_attendance_dict[name]["checked_in"] == True:
+        elif name in event_attendance_dict and event_attendance_dict[name]["attended"] == True:
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (60, 142, 56), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
             cv2.putText(frame, "Welcome " + name + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)

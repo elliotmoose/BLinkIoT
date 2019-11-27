@@ -1,1 +1,1 @@
-{"sean": {"username": "sean", "checked_in": false}, "elliot": {"username": "elliot", "checked_in": false}, "sidarth": {"username": "sidarth", "checked_in": true}}
+{"sean": {"username": "sean", "attended": false}, "elliot": {"username": "elliot", "attended": false}, "sidarth": {"username": "sidarth", "attended": true}}
