@@ -23,7 +23,7 @@ known_face_names = []
 
 for k, v in event_attendance_dict.items():
     username = v["username"]
-    known_face_encodings.append(face_encoding_dict[username]["face_encoding"])
+    known_face_encodings.append(face_encoding_dict[username])
     known_face_names.append(username)
 
 face_locations = []
@@ -79,14 +79,16 @@ while True:
         if name in event_attendance_dict and event_attendance_dict[name]["attended"] == False:
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (209, 136,2), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
-            cv2.putText(frame, "Hello " + name + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+            displayname = event_attendance_dict[name]["displayname"]
+            cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
             cv2.putText(frame, "We're checking you in...", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             found_users_queue.put(name)
             break
         elif name in event_attendance_dict and event_attendance_dict[name]["attended"] == True:
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (60, 142, 56), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
-            cv2.putText(frame, "Welcome " + name + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+            displayname = event_attendance_dict[name]["displayname"]
+            cv2.putText(frame, "Welcome " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
             cv2.putText(frame, "You're checked in.", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             break
         

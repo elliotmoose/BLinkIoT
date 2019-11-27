@@ -1,1 +1,16 @@
-{"sean": {"username": "sean", "attended": false}, "elliot": {"username": "elliot", "attended": false}, "sidarth": {"username": "sidarth", "attended": true}}
+{   
+    "seansean" : {
+        "displayname" : "Sean",
+        "attended" : true
+    }, 
+    
+    "mooselliot" : {
+        "displayname" : "Elliot",
+        "attended" : false
+    },
+
+    "viet" : {
+        "displayname": "Viet",
+        "attended": false
+    }
+}
