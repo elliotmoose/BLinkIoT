@@ -13,8 +13,11 @@ with open("config.json") as config_file:
 
 ENDPOINT_URL = config["ENDPOINT_URL"]
 EVENT_ID = config["EVENT_ID"]
+WINDOW_HEIGHT = config["WINDOW_HEIGHT"]
+WINDOW_WIDTH = config["WINDOW_WIDTH"]
 
 video_capture = cv2.VideoCapture(0)
+cv2.namedWindow("Video", cv2.WINDOW_GUI_NORMAL)
 
 face_encoding_dict = {}
 event_attendance_dict = {}
@@ -146,6 +149,7 @@ update_detected_users_thread.start()
 
 while True:
     display_frame = frame
+    display_frame = cv2.resize(display_frame, (0, 0), fx=1.5, fy=1.5)
     fh, fw, _ = display_frame.shape
             
     for name in detected_users:
@@ -179,8 +183,16 @@ while True:
             cv2.putText(display_frame, "It seems like you're not registered", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             break
     
+    
+    display_gui = np.zeros((WINDOW_HEIGHT,WINDOW_WIDTH,3), np.uint8)
+    
+    x_margin = int((WINDOW_WIDTH - fw) / 2) 
+    y_margin = int((WINDOW_HEIGHT - fh) / 2)
+    
+    display_gui[y_margin: -y_margin,x_margin: -x_margin,:] = display_frame
 
-    cv2.imshow('Video', display_frame)
+
+    cv2.imshow('Video', display_gui)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         is_running = False
