@@ -3,9 +3,10 @@ import cv2
 import numpy as np
 import json
 import requests
-from threading import Thread
+from threading import Thread, Lock
 from queue import Queue
 from utils import *
+import time
 
 with open("config.json") as config_file:
     config = json.load(config_file)
@@ -15,23 +16,49 @@ EVENT_ID = config["EVENT_ID"]
 
 video_capture = cv2.VideoCapture(-1)
 
-face_encoding_dict = load_face_encodings()
-event_attendance_dict = load_attendance()
+face_encoding_dict = {}
+event_attendance_dict = {}
 
 known_face_encodings = []
 known_face_names = []
-
-for k, v in event_attendance_dict.items():
-    username = v["username"]
-    known_face_encodings.append(face_encoding_dict[username])
-    known_face_names.append(username)
 
 face_locations = []
 face_encodings = []
 face_names = []
 is_running = True
+last_update = None
+lock = Lock()
 
-found_users_queue = Queue()
+def get_encodings_attendance():
+    global face_encoding_dict
+    global event_attendance_dict
+    global known_face_encodings
+    global known_face_names
+    global last_update
+
+    face_encoding_dict = load_face_encodings()
+    print("face_encoding_dict updated!", face_encoding_dict.keys())
+    event_attendance_dict = load_attendance()
+    known_face_encodings = []
+    known_face_names = []
+
+    for k, v in event_attendance_dict.items():
+        username = v["username"]
+        if username in face_encoding_dict:
+            known_face_encodings.append(face_encoding_dict[username])
+            known_face_names.append(username)
+
+    print("event_attendance_dict updated! ", event_attendance_dict)
+    last_update = time.time()
+
+def update_encodings_attendance():
+    while True:
+        if time.time() - last_update > 10:
+            lock.acquire()
+            get_encodings_attendance()
+            lock.release()
+        if not is_running:
+            break
 
 def mark_attendance_users():
     while True:
@@ -48,10 +75,20 @@ def mark_attendance_users():
         if not is_running:
             break
 
+found_users_queue = Queue()
+
 mark_attendance_thread = Thread(target=mark_attendance_users)
 mark_attendance_thread.start()
 
+get_encodings_attendance()
+update_encodings_attendance_thread = Thread(target=update_encodings_attendance)
+update_encodings_attendance_thread.start()
+
+print("event_attendance_dict",event_attendance_dict)
+
 process_this_frame = True
+cv2.namedWindow("Video", cv2.WND_PROP_FULLSCREEN)
+
 while True:
     ret, frame = video_capture.read()
     fh, fw, _ = frame.shape
@@ -68,15 +105,20 @@ while True:
             matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
             name = "Unknown"
             face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-            best_match_index = np.argmin(face_distances)
-            if matches[best_match_index]:
-                name = known_face_names[best_match_index]
-            face_names.append(name)
+
+            if (np.amin(face_distances) < 0.4):
+                best_match_index = np.argmin(face_distances)
+                if matches[best_match_index]:
+                    name = known_face_names[best_match_index]
+                face_names.append(name)
 
     process_this_frame = not process_this_frame
 
     for name in face_names:
-        if name in event_attendance_dict and event_attendance_dict[name]["attended"] == False:
+        if name in event_attendance_dict \
+        and event_attendance_dict[name]["registered"] == True \
+        and  event_attendance_dict[name]["attended"] == False:
+
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (209, 136,2), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
             displayname = event_attendance_dict[name]["displayname"]
@@ -84,12 +126,22 @@ while True:
             cv2.putText(frame, "We're checking you in...", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             found_users_queue.put(name)
             break
-        elif name in event_attendance_dict and event_attendance_dict[name]["attended"] == True:
+        elif name in event_attendance_dict \
+        and event_attendance_dict[name]["registered"] == True \
+        and event_attendance_dict[name]["attended"] == True:
             cv2.rectangle(frame, (0, fh-100), (fw, fh), (60, 142, 56), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
             displayname = event_attendance_dict[name]["displayname"]
             cv2.putText(frame, "Welcome " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
             cv2.putText(frame, "You're checked in.", (10, fh-20), font, 1.0, (255, 255, 255), 1)
+            break
+        elif name in event_attendance_dict \
+        and event_attendance_dict[name]["registered"] == False:
+            cv2.rectangle(frame, (0, fh-100), (fw, fh), (28,28,183), cv2.FILLED)
+            font = cv2.FONT_HERSHEY_DUPLEX
+            displayname = event_attendance_dict[name]["displayname"]
+            cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+            cv2.putText(frame, "It seems like you're not registered", (10, fh-20), font, 1.0, (255, 255, 255), 1)
             break
         
     cv2.imshow('Video', frame)

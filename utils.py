@@ -47,23 +47,32 @@ def load_attendance():
             for user in res.json()["data"]:
                 username = user["username"]
                 attended = user["attended"]
-                event_attendance_dict[username] = {"username": username, "attended": attended}
+                event_attendance_dict[username] = {"username": username, "attended": attended, "registered" : True}
 
             usernames = [k for k in event_attendance_dict]
             username_queue = Queue()
             with ThreadPoolExecutor(max_workers=5) as executor:
                 for username in usernames:
                     executor.submit(get_displayname, username, username_queue)
-
+            
             while username_queue.qsize() != 0:
                 username, displayname  = username_queue.get_nowait()
                 event_attendance_dict[username]["displayname"] = displayname
+        
+        res = requests.get(url=ENDPOINT_URL+"/getUsers")
+        if res.status_code == 200 and res.json()["status"] == "SUCCESS":
+            for user in res.json()["data"]:
+                if user["username"] not in event_attendance_dict:
+                    username = user["username"]
+                    displayname = user["displayname"]
+                    event_attendance_dict[username] = {"username": username, "displayname": displayname, "attended": False, "registered" : False}
 
         else:
             print("ERROR!", res.json())
             print("Loading from locally saved event_attendance.json...")
             with open('event_attendance.json', 'r') as f:
                 event_attendance_dict = json.load(f)
+        
 
     else:
         with open('event_attendance.json', 'r') as f:

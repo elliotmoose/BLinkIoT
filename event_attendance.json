@@ -2,18 +2,21 @@
     "seansean" : {
         "username" : "seansean",
         "displayname" : "Sean",
-        "attended" : true
+        "attended" : true,
+        "registered": true
     }, 
     
     "mooselliot" : {
         "username" : "mooselliot",
         "displayname" : "Elliot",
-        "attended" : false
+        "attended" : false,
+        "registered" : false
     },
 
     "viet" : {
         "username" : "viet",
         "displayname": "Viet",
-        "attended": false
+        "attended": false,
+        "registered": true
     }
 }
