@@ -1,5 +1,3 @@
 test_images
 __pycache__
-face_encodings.json
-event_attendance.json
 config.json

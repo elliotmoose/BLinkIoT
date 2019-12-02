@@ -1,15 +1,18 @@
 {   
     "seansean" : {
+        "username" : "seansean",
         "displayname" : "Sean",
         "attended" : true
     }, 
     
     "mooselliot" : {
+        "username" : "mooselliot",
         "displayname" : "Elliot",
         "attended" : false
     },
 
     "viet" : {
+        "username" : "viet",
         "displayname": "Viet",
         "attended": false
     }
