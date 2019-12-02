@@ -15,9 +15,14 @@ ENDPOINT_URL = config["ENDPOINT_URL"]
 EVENT_ID = config["EVENT_ID"]
 WINDOW_HEIGHT = config["WINDOW_HEIGHT"]
 WINDOW_WIDTH = config["WINDOW_WIDTH"]
+GUI_OVERLAY_PATH = config["GUI_OVERLAY_PATH"]
+
+GUI_OVERLAY = cv2.imread(GUI_OVERLAY_PATH)
+GUI_OVERLAY = cv2.resize(GUI_OVERLAY, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 video_capture = cv2.VideoCapture(0)
-cv2.namedWindow("Video", cv2.WINDOW_GUI_NORMAL)
+cv2.namedWindow("BLinkIOT", cv2.WINDOW_GUI_NORMAL)
+cv2.setWindowProperty("BLinkIOT", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN);
 
 face_encoding_dict = {}
 event_attendance_dict = {}
@@ -184,15 +189,14 @@ while True:
             break
     
     
-    display_gui = np.zeros((WINDOW_HEIGHT,WINDOW_WIDTH,3), np.uint8)
+    display_gui = GUI_OVERLAY
     
     x_margin = int((WINDOW_WIDTH - fw) / 2) 
     y_margin = int((WINDOW_HEIGHT - fh) / 2)
-    
-    display_gui[y_margin: -y_margin,x_margin: -x_margin,:] = display_frame
 
+    display_gui[75: 75 + fh ,x_margin: -x_margin,:] = display_frame
 
-    cv2.imshow('Video', display_gui)
+    cv2.imshow('BLinkIOT', display_gui)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         is_running = False
