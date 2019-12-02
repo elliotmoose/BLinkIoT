@@ -26,7 +26,7 @@ face_locations = []
 face_encodings = []
 face_names = []
 is_running = True
-last_update = None
+last_update_time = None
 lock = Lock()
 
 def get_encodings_attendance():
@@ -34,7 +34,7 @@ def get_encodings_attendance():
     global event_attendance_dict
     global known_face_encodings
     global known_face_names
-    global last_update
+    global last_update_time
 
     face_encoding_dict = load_face_encodings()
     print("face_encoding_dict updated!", face_encoding_dict.keys())
@@ -49,11 +49,11 @@ def get_encodings_attendance():
             known_face_names.append(username)
 
     print("event_attendance_dict updated! ", event_attendance_dict)
-    last_update = time.time()
+    last_update_time = time.time()
 
 def update_encodings_attendance():
     while True:
-        if time.time() - last_update > 10:
+        if time.time() - last_update_time > 10:
             lock.acquire()
             get_encodings_attendance()
             lock.release()
@@ -86,70 +86,130 @@ update_encodings_attendance_thread.start()
 
 print("event_attendance_dict",event_attendance_dict)
 
-process_this_frame = True
-cv2.namedWindow("Video", cv2.WND_PROP_FULLSCREEN)
+frame = None 
+detected_users = []
+last_detected_time = time.time()
+last_frame_time = time.time()
 
-while True:
-    ret, frame = video_capture.read()
-    fh, fw, _ = frame.shape
-    small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+def get_video_capture():
+    global frame
+    global lock
+    global video_capture
 
-    rgb_small_frame = small_frame[:, :, ::-1]
+    while True:    
+        _, f = video_capture.read()
 
-    if process_this_frame:
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+        lock.acquire()
+        frame = f
+        lock.release()
 
-        face_names = []
-        for face_encoding in face_encodings:
-            matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-            name = "Unknown"
-            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-
-            if (np.amin(face_distances) < 0.4):
-                best_match_index = np.argmin(face_distances)
-                if matches[best_match_index]:
-                    name = known_face_names[best_match_index]
-                face_names.append(name)
-
-    process_this_frame = not process_this_frame
-
-    for name in face_names:
-        if name in event_attendance_dict \
-        and event_attendance_dict[name]["registered"] == True \
-        and  event_attendance_dict[name]["attended"] == False:
-
-            cv2.rectangle(frame, (0, fh-100), (fw, fh), (209, 136,2), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            displayname = event_attendance_dict[name]["displayname"]
-            cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
-            cv2.putText(frame, "We're checking you in...", (10, fh-20), font, 1.0, (255, 255, 255), 1)
-            found_users_queue.put(name)
+        print("Got frame!", frame)
+        print("ret", _ )
+        if not is_running:
             break
-        elif name in event_attendance_dict \
-        and event_attendance_dict[name]["registered"] == True \
-        and event_attendance_dict[name]["attended"] == True:
-            cv2.rectangle(frame, (0, fh-100), (fw, fh), (60, 142, 56), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            displayname = event_attendance_dict[name]["displayname"]
-            cv2.putText(frame, "Welcome " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
-            cv2.putText(frame, "You're checked in.", (10, fh-20), font, 1.0, (255, 255, 255), 1)
+
+
+def update_detected_users():
+    global frame
+    global detected_users
+    global face_encoding
+    global lock
+
+    while True:
+        if frame != None and time.time() - last_detected_time > 1:
+            
+            lock.acquire()
+            fh, fw, _ = frame.shape
+            small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+            lock.release()
+
+            rgb_small_frame = small_frame[:, :, ::-1]
+
+            face_locations = face_recognition.face_locations(rgb_small_frame)
+            face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+
+            face_names = []
+
+            for face_encoding in face_encodings:
+                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+                face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+
+                if (np.amin(face_distances) < 0.4):
+                    best_match_index = np.argmin(face_distances)
+                    if matches[best_match_index]:
+                        name = known_face_names[best_match_index]
+                        face_names.append(name)
+            
+            lock.acquire()
+            detected_users = face_names
+            last_detected_time = time.time()
+            lock.release()
+
+        if not is_running:
             break
-        elif name in event_attendance_dict \
-        and event_attendance_dict[name]["registered"] == False:
-            cv2.rectangle(frame, (0, fh-100), (fw, fh), (28,28,183), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            displayname = event_attendance_dict[name]["displayname"]
-            cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
-            cv2.putText(frame, "It seems like you're not registered", (10, fh-20), font, 1.0, (255, 255, 255), 1)
-            break
+
+
+def update_display():
+    global detected_users
+    global frame
+    global is_running
+    global lock
+
+    while True:
+        lock.acquire()
+
+        if frame != None:
+            fh, fw, _ = frame.shape
+            
+            for name in detected_users:
+                if name in event_attendance_dict \
+                and event_attendance_dict[name]["registered"] == True \
+                and  event_attendance_dict[name]["attended"] == False:
+                    cv2.rectangle(frame, (0, fh-100), (fw, fh), (209, 136,2), cv2.FILLED)
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    displayname = event_attendance_dict[name]["displayname"]
+                    cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+                    cv2.putText(frame, "We're checking you in...", (10, fh-20), font, 1.0, (255, 255, 255), 1)
+                    found_users_queue.put(name)
+                    break
+
+                elif name in event_attendance_dict \
+                and event_attendance_dict[name]["registered"] == True \
+                and event_attendance_dict[name]["attended"] == True:
+                    cv2.rectangle(frame, (0, fh-100), (fw, fh), (60, 142, 56), cv2.FILLED)
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    displayname = event_attendance_dict[name]["displayname"]
+                    cv2.putText(frame, "Welcome " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+                    cv2.putText(frame, "You're checked in.", (10, fh-20), font, 1.0, (255, 255, 255), 1)
+                    break
+
+                elif name in event_attendance_dict \
+                and event_attendance_dict[name]["registered"] == False:
+                    cv2.rectangle(frame, (0, fh-100), (fw, fh), (28,28,183), cv2.FILLED)
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    displayname = event_attendance_dict[name]["displayname"]
+                    cv2.putText(frame, "Hello " + displayname + "!", (10, fh-60), font, 1.2, (255, 255, 255), 2)
+                    cv2.putText(frame, "It seems like you're not registered", (10, fh-20), font, 1.0, (255, 255, 255), 1)
+                    break
+
+            print("display image!")
+            cv2.imshow('Video', frame)
         
-    cv2.imshow('Video', frame)
+        lock.release()
 
-    # Hit 'q' on the keyboard to quit!
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        is_running = False
-        break
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            lock.acquire()
+            is_running = False
+            lock.release()
+            break
+
+get_video_capture_thread = Thread(target=get_video_capture)
+update_detected_users_thread = Thread(target=update_detected_users)
+update_display_thread = Thread(target=update_display)
+
+get_video_capture_thread.start()
+update_detected_users_thread.start()
+update_display_thread.start()
 
 save_attendance(event_attendance_dict)
 video_capture.release()
